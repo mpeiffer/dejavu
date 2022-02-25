@@ -408,6 +408,14 @@ class SQLDatabase(Database):
         DELETE FROM %s WHERE %s = %%s;
     """ % (POTENTIAL_MATCH_TABLENAME, FIELD_SCIENTIFIC_NAME)
 
+    DELETE_FINGERPRINTS = """
+        DELETE FROM %s
+    """ % (FINGERPRINTS_TABLENAME)
+
+    DELETE_SONGS = """
+        DELETE FROM %s
+    """ % (SONGS_TABLENAME)
+
     def __init__(self, **options):
         super(SQLDatabase, self).__init__()
         self.cursor = cursor_factory(**options)
@@ -479,10 +487,25 @@ class SQLDatabase(Database):
             cur.execute(self.DELETE_COMMENT, (uid, pid, cid,))
 
     def delete_potential_match(self, scientific_name):
-        """ Deletes a potential match from the database using the scientific name
+        """
+        Deletes a potential match from the database using the scientific name
         """
         with self.cursor() as cur:
             cur.execute(self.DELETE_POTENTIAL_MATCH, (scientific_name,))
+
+    def delete_fingerprints():
+        """
+        Deletes all fingerprints
+        """
+        with self.cursor() as cur:
+            cur.execute(self.DELETE_FINGERPRINTS)
+
+    def delete_songs():
+        """
+        Deletes all songs
+        """
+        with self.cursor() as cur:
+            cur.execute(self.DELETE_SONGS)
 
     def get_all_match_data(self, uid):
         """
