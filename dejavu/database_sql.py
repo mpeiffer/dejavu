@@ -86,6 +86,7 @@ class SQLDatabase(Database):
     FIELD_USER = "userName"
     FIELD_LATITUDE = "latitude"
     FIELD_LONGITUDE = "longitude"
+    FIELD_REGION = "userRegion"
     FIELD_MATCH_NAME = "matchName"
     FIELD_CONFIDENCE_LEVEL = "confidenceLevel"
     FIELD_POSTID = "postID"
