@@ -1,6 +1,6 @@
 # Database operations from the PyDejavu package
-# Added in custom database operations for calculating
-# confidence and working with forum data
+# Added in custom database operations for calculating confidence
+# and working with forum data
 
 from __future__ import absolute_import
 from itertools import izip_longest
@@ -86,7 +86,6 @@ class SQLDatabase(Database):
     FIELD_USER = "userName"
     FIELD_LATITUDE = "latitude"
     FIELD_LONGITUDE = "longitude"
-    FIELD_REGION = "userRegion"
     FIELD_MATCH_NAME = "matchName"
     FIELD_CONFIDENCE_LEVEL = "confidenceLevel"
     FIELD_POSTID = "postID"
@@ -102,6 +101,8 @@ class SQLDatabase(Database):
     FIELD_COMMON_NAME = "commonName"
     FIELD_HOST_SPECIES = "hostSpecies"
     FIELD_HOST_STATUS = "hostStatus"
+    FIELD_REGION = "region"
+    FIELD_DESCRIPTION = "insectDesc"
 
     # creates
     CREATE_FINGERPRINTS_TABLE = """
@@ -127,8 +128,9 @@ class SQLDatabase(Database):
         PRIMARY KEY (`%s`),
         UNIQUE KEY `%s` (`%s`)
     ) ENGINE=INNODB;""" % (
-        SONGS_TABLENAME, FIELD_SONG_ID, FIELD_SONGNAME, FIELD_FINGERPRINTED,
-        FIELD_SONG_ID, FIELD_SONG_ID, FIELD_SONG_ID,
+        SONGS_TABLENAME, FIELD_SONG_ID, FIELD_SONGNAME,
+        FIELD_FINGERPRINTED, FIELD_SONG_ID,
+        FIELD_SONG_ID, FIELD_SONG_ID,
     )
 
     CREATE_MATCH_DATA_TABLE = """
@@ -200,8 +202,8 @@ class SQLDatabase(Database):
             %s TEXT,
             %s TEXT
         );
-    """ % (POTENTIAL_MATCH_TABLENAME, FIELD_SCIENTIFIC_NAME, FIELD_COMMON_NAME,
-           FIELD_HOST_SPECIES, FIELD_HOST_STATUS,
+    """ % (POTENTIAL_MATCH_TABLENAME, FIELD_SCIENTIFIC_NAME,
+           FIELD_COMMON_NAME, FIELD_HOST_SPECIES, FIELD_HOST_STATUS,
            FIELD_REGION, FIELD_DESCRIPTION)
 
     # inserts (ignores duplicates)
@@ -238,8 +240,8 @@ class SQLDatabase(Database):
         INSERT INTO %s (%s, %s, %s, %s, %s, %s) values
             (%%s, %%s, %%s, %%s, %%s, %%s);
     """ % (POTENTIAL_MATCH_TABLENAME, FIELD_SCIENTIFIC_NAME, FIELD_COMMON_NAME,
-           FIELD_HOST_SPECIES, FIELD_HOST_STATUS,
-           FIELD_REGION, FIELD_DESCRIPTION)
+           FIELD_HOST_SPECIES, FIELD_HOST_STATUS, FIELD_REGION,
+           FIELD_DESCRIPTION)
 
     # selects
     SELECT = """
@@ -299,6 +301,11 @@ class SQLDatabase(Database):
         SELECT COUNT(*) as n from %s
     """ % (FORUM_POSTS_TABLENAME)
 
+    SELECT_LAST_POST = """
+        SELECT * FROM %s WHERE %s = (SELECT max(%s) FROM %s);
+    """ % (FORUM_POSTS_TABLENAME, FIELD_POSTID,
+           FIELD_POSTID, FORUM_POSTS_TABLENAME)
+
     SELECT_USER_POSTS = """
         SELECT * FROM %s WHERE %s = %%s ORDER BY %s ASC;
     """ % (FORUM_POSTS_TABLENAME, FIELD_UID, FIELD_DATE)
@@ -311,10 +318,10 @@ class SQLDatabase(Database):
         SELECT * FROM %s WHERE %s = %%s AND %s = %%s;
     """ % (FORUM_POSTS_TABLENAME, FIELD_UID, FIELD_POSTID)
 
-    SELECT_LAST_POST = """
-        SELECT * FROM %s WHERE %s = (SELECT max(%s) FROM %s);
-    """ % (FORUM_POSTS_TABLENAME, FIELD_POSTID,
-           FIELD_POSTID, FORUM_POSTS_TABLENAME)
+    SELECT_POST_IMAGE = """
+        SELECT %s FROM %s WHERE %s = %%s AND %s = %%s;
+    """ % (FIELD_IMAGE_FILENAME, FORUM_POSTS_TABLENAME,
+           FIELD_POSTID, FIELD_CATEGORY)
 
     SELECT_COMMENTS = """
         SELECT * FROM %s;
@@ -341,29 +348,29 @@ class SQLDatabase(Database):
     """ % (POTENTIAL_MATCH_TABLENAME, FIELD_REGION, FIELD_COMMON_NAME)
 
     SELECT_POTENTIAL_MATCHES_BY_STATUS = """
-        SELECT * FROM %s WHERE %s LIKE concat(%%s, %%s, %%s) ORDER BY %s ASC;
+        SELECT * FROM %s WHERE %s LIKE concat(%%s, %%s, %%s) ORDER BY %s;
     """ % (POTENTIAL_MATCH_TABLENAME, FIELD_HOST_STATUS, FIELD_COMMON_NAME)
 
     SELECT_POTENTIAL_MATCHES_BY_HOST_AND_REGION = """
-        SELECT * FROM %s WHERE %s = %%s AND %s = %%s ORDER BY %s ASC;
+        SELECT * FROM %s WHERE %s = %%s AND %s = %%s ORDER BY %s;
     """ % (POTENTIAL_MATCH_TABLENAME, FIELD_HOST_SPECIES,
            FIELD_REGION, FIELD_COMMON_NAME)
 
     SELECT_POTENTIAL_MATCHES_BY_HOST_AND_STATUS = """
-        SELECT * FROM %s WHERE %s = %%s AND
-        %s LIKE concat(%%s, %%s, %%s) ORDER BY %s ASC;
+        SELECT * FROM %s WHERE %s = %%s AND %s
+        LIKE concat(%%s, %%s, %%s) ORDER BY %s;
     """ % (POTENTIAL_MATCH_TABLENAME, FIELD_HOST_SPECIES,
            FIELD_HOST_STATUS, FIELD_COMMON_NAME)
 
     SELECT_POTENTIAL_MATCHES_BY_STATUS_AND_REGION = """
         SELECT * FROM %s WHERE %s LIKE concat(%%s, %%s, %%s)
-        AND %s = %%s ORDER BY %s ASC;
+        AND %s = %%s ORDER BY %s;
     """ % (POTENTIAL_MATCH_TABLENAME, FIELD_HOST_STATUS,
            FIELD_REGION, FIELD_COMMON_NAME)
 
     SELECT_POTENTIAL_MATCHES_BY_HOST_STATUS_AND_REGION = """
-        SELECT * FROM %s WHERE %s = %%s AND %s LIKE
-        concat(%%s, %%s, %%s) AND %s = %%s ORDER BY %s ASC;
+        SELECT * FROM %s WHERE %s = %%s AND %s
+        LIKE concat(%%s, %%s, %%s) AND %s = %%s ORDER BY %s;
     """ % (POTENTIAL_MATCH_TABLENAME, FIELD_HOST_SPECIES,
            FIELD_HOST_STATUS, FIELD_REGION, FIELD_COMMON_NAME)
 
@@ -383,6 +390,18 @@ class SQLDatabase(Database):
     UPDATE_USERNAME_ON_COMMENTS = """
         UPDATE %s SET %s = %%s WHERE %s = %%s;
     """ % (COMMENTS_TABLENAME, FIELD_AUTHOR, FIELD_UID)
+
+    UPDATE_POST_TITLE = """
+        UPDATE %s SET %s = %%s WHERE %s = %%s;
+    """ % (FORUM_POSTS_TABLENAME, FIELD_TITLE, FIELD_POSTID)
+
+    UPDATE_POST_CONTENT = """
+        UPDATE %s SET %s = %%s WHERE %s = %%s;
+    """ % (FORUM_POSTS_TABLENAME, FIELD_CONTENT, FIELD_POSTID)
+
+    UPDATE_COMMENT_CONTENT = """
+        UPDATE %s SET %s = %%s WHERE %s = %%s;
+    """ % (COMMENTS_TABLENAME, FIELD_CONTENT, FIELD_COMMENTID)
 
     # deletes
     DELETE_UNFINGERPRINTED = """
@@ -408,14 +427,6 @@ class SQLDatabase(Database):
     DELETE_POTENTIAL_MATCH = """
         DELETE FROM %s WHERE %s = %%s;
     """ % (POTENTIAL_MATCH_TABLENAME, FIELD_SCIENTIFIC_NAME)
-
-    DELETE_FINGERPRINTS = """
-        DELETE FROM %s
-    """ % (FINGERPRINTS_TABLENAME)
-
-    DELETE_SONGS = """
-        DELETE FROM %s
-    """ % (SONGS_TABLENAME)
 
     def __init__(self, **options):
         super(SQLDatabase, self).__init__()
@@ -488,25 +499,10 @@ class SQLDatabase(Database):
             cur.execute(self.DELETE_COMMENT, (uid, pid, cid,))
 
     def delete_potential_match(self, scientific_name):
-        """
-        Deletes a potential match from the database using the scientific name
+        """ Deletes a potential match from the database using the scientific name
         """
         with self.cursor() as cur:
             cur.execute(self.DELETE_POTENTIAL_MATCH, (scientific_name,))
-
-    def delete_fingerprints():
-        """
-        Deletes all fingerprints
-        """
-        with self.cursor() as cur:
-            cur.execute(self.DELETE_FINGERPRINTS)
-
-    def delete_songs():
-        """
-        Deletes all songs
-        """
-        with self.cursor() as cur:
-            cur.execute(self.DELETE_SONGS)
 
     def get_all_match_data(self, uid):
         """
@@ -520,7 +516,7 @@ class SQLDatabase(Database):
 
     def get_match_data(self, mid, uid):
         """
-        Returns data for all matches
+        Returns data for the most recent match for a user
         """
         with self.cursor() as cur:
             cur.execute(self.SELECT_MATCH_DATA, (mid, uid))
@@ -580,15 +576,16 @@ class SQLDatabase(Database):
             for row in cur:
                 yield row
 
-    def get_specific_post(self, uid, postID):
+    def get_num_user_posts(self, uid):
         """
-        Returns a specific post with the given user and post ID
+        Returns the number of posts for a specific user
         """
         with self.cursor() as cur:
-            cur.execute(self.SELECT_SPECIFIC_POST, (uid, postID,))
+            cur.execute(self.SELECT_NUM_USER_POSTS, (uid,))
 
-            for row in cur:
-                yield row
+            for count, in cur:
+                return count
+            return 0
 
     def get_last_post(self):
         """
@@ -600,16 +597,25 @@ class SQLDatabase(Database):
             for row in cur:
                 yield row
 
-    def get_num_user_posts(self, uid):
+    def get_specific_post(self, uid, postID):
         """
-        Returns the number of posts for a specific user
+        Returns a specific post with the given user and post ID
         """
         with self.cursor() as cur:
-            cur.execute(self.SELECT_NUM_USER_POSTS, (uid,))
+            cur.execute(self.SELECT_SPECIFIC_POST, (uid, postID,))
 
-            for count, in cur:
-                return count
-            return 0
+            for row in cur:
+                yield row
+
+    def get_post_image(self, pid, category):
+        """
+        Returns a specific post with the given post ID and category
+        """
+        with self.cursor() as cur:
+            cur.execute(self.SELECT_POST_IMAGE, (pid, category,))
+
+            for row in cur:
+                yield row
 
     def get_comments(self):
         """
@@ -666,8 +672,8 @@ class SQLDatabase(Database):
 
     def get_individual_fingerprints(self, sid):
         """
-        Returns number of individual fingerprints for
-        song with matching song id
+        Returns number of individual fingerprints for song
+        with matching song id
         """
         with self.cursor() as cur:
             cur.execute(self.SELECT_INDIVIDUAL_FINGERPRINTS, (sid,))
@@ -756,28 +762,20 @@ class SQLDatabase(Database):
         Returns all potential matches containing the host, status and region
         """
         with self.cursor() as cur:
-            cur.execute(self.SELECT_POTENTIAL_MATCHES_BY_HOST_STATUS_AND_REGION,
-                        (host, '%', status, '%', region,))
+            cur.execute(
+                self.SELECT_POTENTIAL_MATCHES_BY_HOST_STATUS_AND_REGION,
+                (host, '%', status, '%', region,))
 
             for row in cur:
                 yield row
 
     def set_song_fingerprinted(self, sid):
         """
-        Set the fingerprinted flag to TRUE (1) once a song has been completely
-        fingerprinted in the database.
+        Set the fingerprinted flag to TRUE (1) once a song has been
+        completely fingerprinted in the database.
         """
         with self.cursor() as cur:
             cur.execute(self.UPDATE_SONG_FINGERPRINTED, (sid,))
-
-    def get_songs(self):
-        """
-        Return songs that have the fingerprinted flag set TRUE (1).
-        """
-        with self.cursor(cursor_type=DictCursor) as cur:
-            cur.execute(self.SELECT_SONGS)
-            for row in cur:
-                yield row
 
     def set_username(self, newUsername, uid):
         """
@@ -787,6 +785,36 @@ class SQLDatabase(Database):
         with self.cursor() as cur:
             cur.execute(self.UPDATE_USERNAME_ON_POSTS, (newUsername, uid,))
             cur.execute(self.UPDATE_USERNAME_ON_COMMENTS, (newUsername, uid,))
+
+    def set_post_title(self, newTitle, pid):
+        """
+        Sets the post title to a new title
+        """
+        with self.cursor() as cur:
+            cur.execute(self.UPDATE_POST_TITLE, (newTitle, pid,))
+
+    def update_post_content(self, newContent, pid):
+        """
+        Edits the post content with new content
+        """
+        with self.cursor() as cur:
+            cur.execute(self.UPDATE_POST_CONTENT, (newContent, pid,))
+
+    def update_comment_content(self, newContent, pid):
+        """
+        Edits the comment content with new content
+        """
+        with self.cursor() as cur:
+            cur.execute(self.UPDATE_COMMENT_CONTENT, (newContent, pid,))
+
+    def get_songs(self):
+        """
+        Return songs that have the fingerprinted flag set TRUE (1).
+        """
+        with self.cursor(cursor_type=DictCursor) as cur:
+            cur.execute(self.SELECT_SONGS)
+            for row in cur:
+                yield row
 
     def get_song_by_id(self, sid):
         """
@@ -850,8 +878,8 @@ class SQLDatabase(Database):
         Inserts a new comment into the database
         """
         with self.cursor() as cur:
-            cur.execute(self.INSERT_COMMENT,
-                        (uid, pid, cid, author, content, date, category))
+            cur.execute(self.INSERT_COMMENT, (uid, pid, cid, author,
+                                              content, date, category))
 
     def insert_potential_match(self, scientific_name, common_name,
                                host_species, host_status, region, description):
@@ -859,9 +887,11 @@ class SQLDatabase(Database):
         Inserts a new potential match into the database
         """
         with self.cursor() as cur:
-            cur.execute(self.INSERT_POTENTIAL_MATCH,
-                        (scientific_name, common_name, host_species,
-                         host_status, region, description))
+            cur.execute(self.INSERT_POTENTIAL_MATCH, (scientific_name,
+                                                      common_name,
+                                                      host_species,
+                                                      host_status, region,
+                                                      description))
 
     def get_iterable_kv_pairs(self):
         """
