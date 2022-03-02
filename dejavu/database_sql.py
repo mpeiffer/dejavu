@@ -513,7 +513,7 @@ class SQLDatabase(Database):
         with self.cursor() as cur:
             cur.execute(self.DELETE_POTENTIAL_MATCH, (scientific_name,))
 
-    def delete_fingerprints():
+    def delete_fingerprints(self):
         """
         Deletes all fingerprints from the database
         """
